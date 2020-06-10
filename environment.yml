@@ -1,0 +1,19 @@
+name: pytorch
+
+dependencies:
+  - python=3.8
+  - conda-forge::numpy
+  - conda-forge::matplotlib
+  - conda-forge::pandas
+  - pytorch::pytorch 
+  - pytorch::torchvision 
+  - cudatoolkit=10.2
+  - conda-forge::ipykernel
+  - conda-forge::ipython
+  - conda-forge::ipython_genutils
+  - conda-forge::jupyter
+  - conda-forge::jupyter_client
+  - conda-forge::jupyter_console
+  - conda-forge::jupyter_core
+  - conda-forge::jupyterlab
+  - conda-forge::jupyterlab_server
