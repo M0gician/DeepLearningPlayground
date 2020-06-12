@@ -3,41 +3,39 @@ import torch.nn as nn
 from torch.optim import SGD
 from torch.utils.data import DataLoader
 
-class LinearRegressor(nn.Module):
-    def __init__(self, in_features: int, verbose=False):
-        super(LinearRegressor, self).__init__()
+class SoftmaxNet(nn.Module):
+    def __init__(self, in_features: int, out_labels: int, verbose=False):
+        super(SoftmaxNet, self).__init__()
         self.verbose = verbose
         self.training = None
 
-        # One Fully connected layer
-        self.fc1 = nn.Linear(in_features, 1)
+        self.fc1 = nn.Linear(in_features, out_labels)
 
         self.criterion = None
-        self.optimizer = None     
-
+        self.optimizer = None
+    
     def forward(self, X: torch.Tensor) -> torch.Tensor:
+        X = X.reshape(-1, self.fc1.in_features) if len(X) > 2 else X
         return self.fc1(X)
     
-    def initialize(self, criterion=None, optimizer=None, learning_rate=0.03) -> None:        
+    def initialized(self, criterion=None, optimizer=None, learning_rate=0.1) -> None:
         if criterion is None:
-            # Use L2 regularization by default
-            self.criterion = nn.MSELoss()
+            self.criterion = nn.CrossEntropyLoss()
         else:
             self.criterion = criterion
         
         if optimizer is None:
-            # Use Stochastic Gradient Descent by default
             self.optimizer = SGD(self.parameters(), lr=learning_rate)
         else:
             self.optimizer = optimizer
-        
+
         self.fc1.weight.data.uniform_(0.0, 0.01)
         self.fc1.bias.data.fill_(0)
-    
+
     def train(self, data: DataLoader, epochs: int, mode=True) -> None:
         if self.verbose:
             running_loss = 0.0
-
+        
         self.training = mode
         for module in self.children():
             module.train(mode)
@@ -61,7 +59,3 @@ class LinearRegressor(nn.Module):
         if self.verbose:
             print('Finished Training')
         return self
-    
-                    
-
-        
