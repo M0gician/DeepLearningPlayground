@@ -18,7 +18,7 @@ class SoftmaxNet(nn.Module):
         X = X.reshape(-1, self.fc1.in_features) if len(X) > 2 else X
         return self.fc1(X)
     
-    def initialized(self, criterion=None, optimizer=None, learning_rate=0.1) -> None:
+    def initialize(self, criterion=None, optimizer=None, learning_rate=0.1) -> None:
         if criterion is None:
             self.criterion = nn.CrossEntropyLoss()
         else:
@@ -43,7 +43,8 @@ class SoftmaxNet(nn.Module):
         for epoch in range(0, epochs):
             for i, datum in enumerate(data, 0):
                 features, labels = datum
-                loss = self.criterion(self(features), labels)
+                pred = self(features)
+                loss = self.criterion(pred, labels)
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
@@ -59,3 +60,24 @@ class SoftmaxNet(nn.Module):
         if self.verbose:
             print('Finished Training')
         return self
+
+
+if __name__ == "__main__":
+    import torch
+    from helper import load_fashion_mnist_data, predict_fashion_mnist
+    from helper import evaluate_accuracy, evaluate_loss
+    from torch.utils.data import DataLoader
+    from Softmax import SoftmaxNet
+
+    # Input size: 28 (width) * 28 (height) = 784 pixels
+    num_inputs = 784
+
+    # Output size: 10 categories
+    num_outputs = 10
+
+    batch_size = 256
+    mnist_train, mnist_test = load_fashion_mnist_data(batch_size, resize=None)
+
+    smNet = SoftmaxNet(num_inputs, num_outputs, verbose=True)
+    smNet.initialize(learning_rate=0.15)
+    smNet.train(mnist_train, 5)
