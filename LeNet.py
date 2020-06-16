@@ -15,12 +15,12 @@ Layer_Type = Union[typing.OrderedDict[str, nn.Module], nn.Module]
 
 class Reshape(torch.nn.Module):
     def forward(self, x):
-        return x.view(-1,1,28,28)
+        return x.view(-1, 1, 28, 28)
 
 
 class Flatten(nn.Module):
     def forward(self, X: torch.Tensor) -> torch.Tensor:
-        return X.view(torch.numel(X), -1)
+        return X.view(-1, int(torch.numel(X) / X.size(0)))
 
 
 class LeNet(Sequential):
@@ -40,8 +40,8 @@ class LeNet(Sequential):
                 self.add_module(str(idx), module)
 
     def train(self, mode=True, data=None, epochs=10) -> 'LeNet':
-        # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        device = "cpu"
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        # device = "cpu"
         self.to(device)
 
         if data is None:
@@ -143,13 +143,13 @@ Layer C5 (Convolutional): # Fully connected
 C5 = nn.Linear(in_features=16*5*5, out_features=120)
 
 """
-    Layer F6 (Fully connected):
-        Input size: 5x5
-        Output size: 5x5
-        Input channels: 120
-        Output channels: 84
-        Trainable parameters (Original): (120+1)*84 = 10164
-        Connections: (120+1)*84 = 10164 
+Layer F6 (Fully connected):
+    Input size: 5x5
+    Output size: 5x5
+    Input channels: 120
+    Output channels: 84
+    Trainable parameters (Original): (120+1)*84 = 10164
+    Connections: (120+1)*84 = 10164 
 """
 F6 = nn.Linear(in_features=120, out_features=84)
 

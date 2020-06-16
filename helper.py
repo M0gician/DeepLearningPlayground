@@ -27,7 +27,8 @@ class Accumulator:
         return self.data[idx]
 
 
-def accuracy(y_hat, y): 
+def accuracy(y_hat, y):
+    y_hat = y_hat.cpu()
     if y_hat.shape[1] > 1:
         return float((y_hat.argmax(axis=1).type(torch.float32) ==
                       y.type(torch.float32)).sum())
@@ -38,8 +39,9 @@ def accuracy(y_hat, y):
 def evaluate_accuracy(net, data_iter):  
     metric = Accumulator(2)  # num_corrected_examples, num_examples
     for X, y in data_iter:
+        X_gpu = X.to(device)
         # X, y = X.to(device), y.to(device)
-        metric.add(accuracy(net(X), y), y.numpy().size)
+        metric.add(accuracy(net(X_gpu), y), y.numpy().size)
     return metric[0] / metric[1]
 
 
@@ -47,8 +49,10 @@ def evaluate_loss(net, data_iter):  #@save
     """Evaluate the loss of a model on the given dataset."""
     metric = Accumulator(2)  # sum_loss, num_examples
     for X, y in data_iter:
+        X_gpu, y_gpu = X.to(device), y.to(device)
         # X, y = X.to(device), y.to(device)
-        l = net.criterion(net(X), y)
+        l_gpu = net.criterion(net(X_gpu), y_gpu)
+        l = l_gpu.cpu()
         if l.nelement() != 1:
             metric.add(l.sum(), y.numpy().size)
         else:
@@ -103,8 +107,8 @@ def predict_fashion_mnist(net: torch.nn.Module, dataset: DataLoader, n=6):
     for features, labels in dataset:
         break
     trues = [FASHION_MINST_LABELS[int(i)] for i in labels]
-    # features = features.to(device)
-    raw_preds = net(features).argmax(axis=1)
+    features_gpu = features.to(device)
+    raw_preds = net(features_gpu).argmax(axis=1)
     preds = [FASHION_MINST_LABELS[int(i)] for i in raw_preds]
     titles = [true+'\n' + pred for true, pred in zip(trues, preds)]
     show_images(features[0:n].reshape(n, 28, 28), 1, n, titles=titles[0:n])
