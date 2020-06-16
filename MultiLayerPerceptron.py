@@ -30,17 +30,16 @@ def _copy_to_script_wrapper(fn):
     return fn
 
 
-class MLP(nn.Module):
-    def __init__(self, *layers: Layer_Type, verbose=False):
-        super(MLP, self).__init__()
-        self.verbose = verbose
-        self.training = None
+class Sequential(nn.Module):
+    def __init__(self, *layers: Layer_Type):
+        self.training = False
 
         self.criterion = None
         self.optimizer = None
 
+        super(Sequential, self).__init__()
         if len(layers) == 1 and isinstance(layers[0], OrderedDict):
-            for name, module in layer[0].items():
+            for name, module in layers[0].items():
                 self.add_module(name, module)
         else:
             for idx, module in enumerate(layers):
@@ -52,7 +51,7 @@ class MLP(nn.Module):
     
     @_copy_to_script_wrapper
     def __dir__(self) -> list:
-        keys = super(MLP, self).__dir__()
+        keys = super(Sequential, self).__dir__()
         keys = [key for key in keys if not key.isdigit()]
         return keys
 
@@ -87,32 +86,51 @@ class MLP(nn.Module):
             key = self._get_item_by_idx(self._modules.keys(), idx)
             delattr(self, key)
 
-    def forward(self, X: torch.Tensor) -> torch.Tensor:
-        for name, module in self._modules.items():
-            if name.isdigit():
-                X = module(X)
-        return X
-    
     def initialize(self, criterion=None, optimizer=None, learning_rate=0.5) -> None:
         if criterion is None:
             self.criterion = nn.CrossEntropyLoss()
         else:
             self.criterion = criterion
-        
+
         if optimizer is None:
             self.optimizer = SGD(self.parameters(), lr=learning_rate)
         else:
             self.optimizer = optimizer
-        
-        for module in self:
-            if type(module) == nn.Linear:
-                module.weight.data.normal_(0.0, 0.01)
-                module.bias.data.fill_(0)
+
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        for name, module in self._modules.items():
+            if name != "criterion":
+                X = module(X)
+        return X
     
-    def train(self, data: DataLoader, epochs: int, mode=True) -> None:
+    def train(self, mode=True) -> None:
+        self.training = mode
+        for module in self:
+            module.train(mode)
+
+
+class MLP(Sequential):
+    def __init__(self, *layers: Layer_Type, verbose=False):
+        super(MLP, self).__init__()
+        self.verbose = verbose
+        self.training = False
+
+        self.criterion = None
+        self.optimizer = None
+
+        if len(layers) == 1 and isinstance(layers[0], OrderedDict):
+            for name, module in layers[0].items():
+                self.add_module(name, module)
+        else:
+            for idx, module in enumerate(layers):
+                self.add_module(str(idx), module)
+
+    def train(self, mode=True, data=None, epochs=10) -> 'MLP':
+        if data is None:
+            raise FileNotFoundError("\"data\" has to be a valid Dataloader object!")
         if self.verbose:
             running_loss = 0.0
-        
+
         self.training = mode
         for module in self:
             module.train(mode)
@@ -129,8 +147,8 @@ class MLP(nn.Module):
                     running_loss += loss.item()
                     batch_split = int(len(data.dataset) / data.batch_size / 5)
                     batch_split = 1 if batch_split < 1 else batch_split
-                    if i % batch_split == batch_split-1:
-                        print(f"[epoch {epoch+1}, batch {i+1}] loss: {running_loss/batch_split}")
+                    if i % batch_split == batch_split - 1:
+                        print(f"[epoch {epoch + 1}, batch {i + 1}] loss: {running_loss / batch_split}")
                         running_loss = 0.0
 
         if self.verbose:
@@ -164,7 +182,13 @@ if __name__ == "__main__":
     relu = nn.ReLU()
     fc2 = nn.Linear(256, num_outputs)
 
+    def init_weights(m):
+        if type(m) == nn.Linear:
+            nn.init.normal_(m.weight, mean=0, std=0.01)
+            nn.init.zeros_(m.bias)
+
     mlpNet = MLP(rsp, fc1, relu, fc2, verbose=True)
     mlpNet.initialize()
-    mlpNet.train(mnist_train, 5)
+    mlpNet.apply(init_weights)
+    mlpNet.train(mode=True, data=mnist_train, epochs=5)
 
