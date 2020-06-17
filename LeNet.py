@@ -73,6 +73,97 @@ class LeNet(Sequential):
             print('Finished Training')
         return self
 
+class LeNet_C3(nn.Module):
+    """
+    Implementing the original convolution C3 described in the paper
+        "Gradient-Based Learning Applied to Document Recognition".
+    
+        │ 0  1  2  3  4  5  6  7  8  9  10  11  12  13  14  15
+    ────┼─────────────────────────────────────────────────────────
+      0 │ x           x  x  x        x  x   x   x       x   x
+      1 │ x  x           x  x  x        x   x   x   x       x
+      2 │ x  x  x           x  x  x         x       x   x   x
+      3 │    x  x  x        x  x  x  x          x       x   x
+      4 │       x  x  x        x  x  x  x       x   x       x
+      5 │          x  x  x        x  x  x   x       x   x   x
+
+       Each column indicates which feature map in S2 are combined 
+             by the units in a particular feature map of C3
+    """
+    def __init__(self):
+        super(LeNet_C3, self).__init__()
+        self.connect_3 = [
+            [0, 1, 2],
+            [1, 2, 3],
+            [2, 3, 4],
+            [3, 4, 5],
+            [0, 4, 5],
+            [0, 1, 5],
+        ]
+
+        self.connect_4 = [
+            [0, 1, 2, 3],
+            [1, 2, 3, 4],
+            [2, 3, 4, 5],
+            [1, 3, 4, 5],
+            [1, 2, 4, 5],
+            [1, 2, 3, 5],
+            [0, 1, 3, 4],
+            [1, 2, 4, 5],
+            [0, 2, 3, 5]
+        ]
+
+        self.connect_6 = [0,1,2,3,4,5]
+
+        # Trainable parameters: (5*5*1)*3*6 + 1*6 = 456
+        self.connect_3_modules = nn.ModuleList(
+            nn.Conv2d(in_channels=3, out_channels=1, kernel_size=(5,5), padding=False) for i in range(
+                len(self.connect_3)
+            )
+        )
+
+        # Trainable parameters: (5*5*1)*4*9 + 1*9 = 909
+        self.connect_4_modules = nn.ModuleList(
+            nn.Conv2d(in_channels=4, out_channels=1, kernel_size=(5,5), padding=False) for i in range(
+                len(self.connect_4)
+            )
+        )
+
+        # Trainable parameters: (5*5*1)*6*1 + 1*1 = 151
+        self.connect_6_modules = nn.Conv2d(in_channels=6, out_channels=1, kernel_size=(5,5), padding=False)
+
+        # Total parameters: 456 + 909 + 151 = 1516
+
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        def calc_routine(subConv: nn.Conv2d, connection: list, input=X) -> torch.Tensor:
+            return subConv(input[:, connection, :, :])
+
+        connect_3_output = list(map(calc_routine, self.connect_3_modules, self.connect_3))
+        connect_4_output = list(map(calc_routine, self.connect_4_modules, self.connect_4))
+        connect_6_output = [self.connect_6_modules(X[:, self.connect_6, :, :])]
+        return torch.cat(connect_3_output + connect_4_output + connect_6_output, dim=1)
+
+
+class Subsampler(nn.Module):
+    def __init__(self, in_channels: int):
+        super(Subsampler, self).__init__()
+        self.in_channels = in_channels
+        
+        self.sampling_module = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.trainable_module = nn.Conv2d(
+            in_channels=self.in_channels, 
+            out_channels=self.in_channels,
+            kernel_size=1,
+            groups=self.in_channels,
+            bias=True
+        )
+    
+    def forward(self, X:torch.Tensor) -> torch.Tensor:
+        output = self.sampling_module(X)
+        output = self.trainable_module(output)
+        return output
+
+
 
 """
 Layer C1 (Convolutional):
@@ -86,7 +177,7 @@ Layer C1 (Convolutional):
     Trainable parameters: (5*5*1+1)*6 = 156
     Connections: 28*28*(5*5+1)*6 = 122304
 """
-C1 = nn.Conv2d(in_channels=1, out_channels=6, kernel_size=(5, 5), padding=2)
+C1 = nn.Conv2d(in_channels=1, out_channels=6, kernel_size=(5, 5), padding=2, bias=True)
 
 """
 Layer S2 (Sub-sampling):
@@ -113,7 +204,7 @@ Layer C3 (Convolutional):
     Trainable parameters (Original): (5*5)*(3*6 + 4*9 + 6*1) + 16 = 1516
     Connections: 10*10*1516 = 151600
 """
-C3_simplified = nn.Conv2d(in_channels=6, out_channels=16, kernel_size=(5, 5))
+C3_simplified = nn.Conv2d(in_channels=6, out_channels=16, kernel_size=(5, 5), bias=True)
 
 """
 Layer S4 (Sub-sampling):
