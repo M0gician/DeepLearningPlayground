@@ -1,5 +1,7 @@
 import torch
 import torchvision
+import os
+import torchvision.datasets as datasets
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from matplotlib import pyplot as plt
@@ -81,6 +83,49 @@ def synthetic_data(w, b, num_examples):
     y = X @ w + b
     y += torch.zeros(size=y.shape).normal_(std=0.01)
     return X, y
+
+
+def load_tiny_imagenet(IMAGENET_DIR='tiny-imagenet-200'):
+    dirname = os.path.dirname(__file__)
+
+    data_transforms = {
+        'train': transforms.Compose([
+            transforms.Scale(size=(227, 227)),
+            transforms.ToTensor(),
+        ]),
+        'val': transforms.Compose([
+            transforms.Scale(size=(227,227)),
+            transforms.ToTensor(),
+        ]),
+        'test': transforms.Compose([
+            transforms.Scale(size=(227, 227)),
+            transforms.ToTensor(),
+        ])
+    }
+
+    num_workers = {
+        'train': 8,
+        'val': 8,
+        'test': 8
+    }
+
+    image_datasets = {
+        x: datasets.ImageFolder(
+            os.path.join(dirname, IMAGENET_DIR, x),
+            data_transforms[x]
+        ) for x in ['train', 'val', 'test']
+    }
+
+    dataloaders = {
+        x: DataLoader(
+            image_datasets[x],
+            batch_size=100,
+            shuffle=True,
+            num_workers=num_workers[x]
+        ) for x in ['train', 'val', 'test']
+    }
+
+    return dataloaders
 
 
 def load_fashion_mnist_data(batch_size, resize=None):

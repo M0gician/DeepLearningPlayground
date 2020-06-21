@@ -1,13 +1,9 @@
 import torch
 import typing
-import operator
 import torch.nn as nn
 from MultiLayerPerceptron import Sequential
-from torch.optim import SGD
-from itertools import islice
 from collections import OrderedDict
-from torch.utils.data import DataLoader
-from typing import Union, TypeVar, Iterator
+from typing import Union, TypeVar
 
 T = TypeVar('T')
 Layer_Type = Union[typing.OrderedDict[str, nn.Module], nn.Module]
@@ -73,6 +69,7 @@ class LeNet(Sequential):
             print('Finished Training')
         return self
 
+
 class LeNet_C3(nn.Module):
     """
     Implementing the original convolution C3 described in the paper
@@ -90,6 +87,7 @@ class LeNet_C3(nn.Module):
        Each column indicates which feature map in S2 are combined 
              by the units in a particular feature map of C3
     """
+
     def __init__(self):
         super(LeNet_C3, self).__init__()
         self.connect_3 = [
@@ -113,24 +111,24 @@ class LeNet_C3(nn.Module):
             [0, 2, 3, 5]
         ]
 
-        self.connect_6 = [0,1,2,3,4,5]
+        self.connect_6 = [0, 1, 2, 3, 4, 5]
 
         # Trainable parameters: (5*5*1)*3*6 + 1*6 = 456
         self.connect_3_modules = nn.ModuleList(
-            nn.Conv2d(in_channels=3, out_channels=1, kernel_size=(5,5), padding=False) for i in range(
+            nn.Conv2d(in_channels=3, out_channels=1, kernel_size=(5, 5), padding=False) for i in range(
                 len(self.connect_3)
             )
         )
 
         # Trainable parameters: (5*5*1)*4*9 + 1*9 = 909
         self.connect_4_modules = nn.ModuleList(
-            nn.Conv2d(in_channels=4, out_channels=1, kernel_size=(5,5), padding=False) for i in range(
+            nn.Conv2d(in_channels=4, out_channels=1, kernel_size=(5, 5), padding=False) for i in range(
                 len(self.connect_4)
             )
         )
 
         # Trainable parameters: (5*5*1)*6*1 + 1*1 = 151
-        self.connect_6_modules = nn.Conv2d(in_channels=6, out_channels=1, kernel_size=(5,5), padding=False)
+        self.connect_6_modules = nn.Conv2d(in_channels=6, out_channels=1, kernel_size=(5, 5), padding=False)
 
         # Total parameters: 456 + 909 + 151 = 1516
 
@@ -148,21 +146,20 @@ class Subsampler(nn.Module):
     def __init__(self, in_channels: int):
         super(Subsampler, self).__init__()
         self.in_channels = in_channels
-        
+
         self.sampling_module = nn.AvgPool2d(kernel_size=2, stride=2)
         self.trainable_module = nn.Conv2d(
-            in_channels=self.in_channels, 
+            in_channels=self.in_channels,
             out_channels=self.in_channels,
             kernel_size=1,
             groups=self.in_channels,
             bias=True
         )
-    
-    def forward(self, X:torch.Tensor) -> torch.Tensor:
+
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
         output = self.sampling_module(X)
         output = self.trainable_module(output)
         return output
-
 
 
 """
@@ -231,7 +228,7 @@ Layer C5 (Convolutional): # Fully connected
     Trainable parameters (Original): (16*5*5+1)*120 = 48120
     Connections: (16*25+1)*120 = 48120  
 """
-C5 = nn.Linear(in_features=16*5*5, out_features=120)
+C5 = nn.Linear(in_features=16 * 5 * 5, out_features=120)
 
 """
 Layer F6 (Fully connected):

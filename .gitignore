@@ -2,3 +2,4 @@ d2l/
 .vscode/
 __pycache__/
 .idea/
+tiny-imagenet-200/
