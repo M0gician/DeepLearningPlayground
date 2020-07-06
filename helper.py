@@ -85,7 +85,7 @@ def synthetic_data(w, b, num_examples):
     return X, y
 
 
-def load_tiny_imagenet(IMAGENET_DIR='tiny-imagenet-200'):
+def load_tiny_imagenet(batch_size: int, IMAGENET_DIR='tiny-imagenet-200'):
     dirname = os.path.dirname(__file__)
 
     data_transforms = {
@@ -119,7 +119,7 @@ def load_tiny_imagenet(IMAGENET_DIR='tiny-imagenet-200'):
     dataloaders = {
         x: DataLoader(
             image_datasets[x],
-            batch_size=100,
+            batch_size=batch_size,
             shuffle=True,
             num_workers=num_workers[x]
         ) for x in ['train', 'val', 'test']
